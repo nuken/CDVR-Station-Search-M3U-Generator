@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Channels DVR Station Search & M3U Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 900px;
+            margin-bottom: 20px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 1rem;
+        }
+        .station-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .station-card {
+            background-color: #f9f9f9;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease-in-out;
+            position: relative; /* For checkbox positioning */
+        }
+        .station-card:hover {
+            transform: translateY(-5px);
+        }
+        .station-card img {
+            max-width: 100px;
+            height: auto;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .station-card a {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 500;
+            margin-top: 5px;
+            word-break: break-all; /* Ensures long URLs break and fit */
+        }
+        .station-card a:hover {
+            text-decoration: underline;
+        }
+        .station-info p {
+            font-size: 0.9rem;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        .no-results {
+            text-align: center;
+            color: #777;
+            font-size: 1.1rem;
+            padding: 30px;
+        }
+        .initial-message {
+            text-align: center;
+            color: #555;
+            font-size: 1.1rem;
+            padding: 30px;
+        }
+        .loading-indicator {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2rem;
+            color: #666;
+        }
+        .checkbox-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+        }
+        .m3u-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .m3u-input-per-card { /* New style for per-card input */
+            width: calc(100% - 20px); /* Adjust width for padding */
+            padding: 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 0.85rem;
+        }
+        .m3u-textarea {
+            width: 100%;
+            height: 200px;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            background-color: #f9fafb;
+            resize: vertical;
+            margin-bottom: 15px;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .btn-primary {
+            background-color: #2563eb;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #1d4ed8;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        .btn-secondary {
+            background-color: #6b7280;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #4b5563;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        .btn:disabled {
+            background-color: #d1d5db;
+            color: #9ca3af;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .selected-count {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 1rem;
+            color: #4a5568;
+        }
+        .message-box {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 0.95rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        .message-box.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+        /* New style for hiding/showing results section */
+        .station-results-section.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body class="p-4 bg-gray-100 min-h-screen flex flex-col items-center">
+    <div class="container">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Channels DVR Station Search & M3U Generator</h1>
+        
+        <div id="messageBox" class="message-box hidden"></div>
+
+        <input type="text" id="searchInput" class="search-input" placeholder="Start typing to search for channels...">
+        
+        <div class="button-group mb-4">
+            <button id="toggleStationsBtn" class="btn btn-secondary">View All Stations</button>
+            <button id="clearSearchBtn" class="btn btn-secondary hidden">Clear Search</button>
+        </div>
+
+        <div id="stationResultsSection" class="station-results-section hidden">
+            <div class="selected-count" id="selectedCount">0 channels selected</div>
+
+            <div id="loadingIndicator" class="loading-indicator hidden">Loading stations...</div>
+            <div id="initialMessage" class="initial-message">
+                Enter a search term above to find Channels DVR stations or click "View All Stations".
+            </div>
+            <div id="stationResults" class="station-grid">
+                </div>
+            <div id="noResults" class="no-results hidden">
+                No stations found matching your search. Try a different keyword.
+            </div>
+        </div>
+
+        <div class="m3u-section">
+            <h2 class="text-2xl font-bold text-center text-gray-800 mb-4">Generate M3U Playlist</h2>
+            
+            <div class="button-group">
+                <button id="generateM3UBtn" class="btn btn-primary" disabled>Generate M3U Playlist</button>
+            </div>
+
+            <textarea id="m3uOutput" class="m3u-textarea mt-6 hidden" readonly placeholder="Generated EXTM3U playlist will appear here..."></textarea>
+            
+            <div class="button-group mt-2">
+                <button id="downloadM3UBtn" class="btn btn-secondary" disabled>Download M3U</button>
+                <button id="copyM3UBtn" class="btn btn-secondary" disabled>Copy to Clipboard</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allStations = {}; // Global variable to store all fetched station data
+        let selectedStations = {}; // Object to store selected station data by stationId, including its streamUrl
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchInput = document.getElementById('searchInput');
+            const stationResultsDiv = document.getElementById('stationResults');
+            const noResultsDiv = document.getElementById('noResults');
+            const initialMessageDiv = document.getElementById('initialMessage');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const selectedCountSpan = document.getElementById('selectedCount');
+            const generateM3UBtn = document.getElementById('generateM3UBtn');
+            const m3uOutput = document.getElementById('m3uOutput');
+            const downloadM3UBtn = document.getElementById('downloadM3UBtn');
+            const copyM3UBtn = document.getElementById('copyM3UBtn');
+            const messageBox = document.getElementById('messageBox');
+            const toggleStationsBtn = document.getElementById('toggleStationsBtn'); // Renamed from viewAllBtn
+            const clearSearchBtn = document.getElementById('clearSearchBtn');
+            const stationResultsSection = document.getElementById('stationResultsSection'); // New container for results
+
+            function showMessage(message, type = 'info') {
+                messageBox.textContent = message;
+                messageBox.className = `message-box ${type}`;
+                messageBox.classList.remove('hidden');
+            }
+
+            function hideMessage() {
+                messageBox.classList.add('hidden');
+            }
+
+            // Function to fetch station data
+            async function fetchStations() {
+                loadingIndicator.classList.remove('hidden');
+                initialMessageDiv.classList.add('hidden');
+                hideMessage();
+                try {
+                    const response = await fetch('proxy.php'); // Changed endpoint to proxy.php
+                    if (!response.ok) { // Check if the response was successful
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json(); // Parse the JSON response
+                    
+                    if (data.error) { // Check if the JSON response contains an error from the proxy
+                        throw new Error(data.error);
+                    }
+
+                    // Flatten the nested JSON structure into a single array of station objects
+                    allStations = {};
+                    for (const sourceKey in data) { // Iterate over source keys in the data
+                        if (data.hasOwnProperty(sourceKey) && typeof data[sourceKey] === 'object' && data[sourceKey] !== null) { // Ensure property is an object
+                            for (const stationId in data[sourceKey]) { // Iterate over station IDs
+                                if (data[sourceKey].hasOwnProperty(stationId)) { // Ensure property is directly on the object
+                                    allStations[stationId] = data[sourceKey][stationId]; // Store station data
+                                }
+                            }
+                        }
+                    }
+                    // Only show initial message if search input is empty and station results are hidden
+                    if (searchInput.value.trim() === '' && stationResultsSection.classList.contains('hidden')) {
+                        initialMessageDiv.classList.remove('hidden');
+                    }
+                } catch (error) {
+                    console.error('Error fetching stations:', error);
+                    showMessage(`Error loading stations: ${error.message}. Please ensure your Channels DVR server is running at http://127.0.0.1:8089 and XAMPP is properly configured.`, 'error');
+                    initialMessageDiv.classList.add('hidden');
+                    noResultsDiv.classList.add('hidden');
+                } finally {
+                    loadingIndicator.classList.add('hidden');
+                }
+            }
+
+            // Function to display stations
+            function displayStations(stations, searchTerm) {
+                stationResultsDiv.innerHTML = ''; // Clear previous results
+                noResultsDiv.classList.add('hidden'); // Hide no results message
+                initialMessageDiv.classList.add('hidden'); // Hide initial message
+
+                if (stations.length === 0) {
+                    if (searchTerm === '') {
+                        initialMessageDiv.classList.remove('hidden'); // Show initial message if search is empty
+                    } else {
+                        noResultsDiv.classList.remove('hidden'); // Show no results if search term exists
+                    }
+                    return;
+                }
+
+                stations.forEach(station => { // Iterate over each station
+                    const card = document.createElement('div'); // Create a div for the station card
+                    card.className = 'station-card'; // Add class to the card
+                    card.dataset.stationId = station.stationId; // Set data attribute for station ID
+
+                    // Checkbox for selection
+                    const checkboxContainer = document.createElement('div'); // Create checkbox container
+                    checkboxContainer.className = 'checkbox-container'; // Add class to checkbox container
+                    const checkbox = document.createElement('input'); // Create checkbox input
+                    checkbox.type = 'checkbox'; // Set input type to checkbox
+                    checkbox.id = `checkbox-${station.stationId}`; // Set ID for checkbox
+                    checkbox.checked = !!selectedStations[station.stationId]; // Retain checkbox state
+                    checkboxContainer.appendChild(checkbox); // Append checkbox to its container
+                    card.appendChild(checkboxContainer); // Append checkbox container to card
+
+                    // Image and Info
+                    const imageUrl = station.preferredImage && station.preferredImage.uri && !station.preferredImage.uri.startsWith('sources/generic/')
+                                     ? station.preferredImage.uri // Use preferred image URI if available and not generic
+                                     : `https://placehold.co/100x75/e2e8f0/64748b?text=${encodeURIComponent(station.callSign || 'No Image')}`; // Use placeholder if no valid image
+                    
+                    const imageLink = document.createElement('a'); // Create a link for the image
+                    imageLink.href = imageUrl; // Set link href to image URL
+                    imageLink.target = "_blank"; // Open link in new tab
+
+                    const img = document.createElement('img'); // Create image element
+                    img.src = imageUrl; // Set image source
+                    img.alt = station.callSign || 'Station Logo'; // Set image alt text
+                    img.onerror = function() { // Handle image loading errors
+                        this.onerror=null; // Prevent infinite loop
+                        this.src='https://placehold.co/100x75/e2e8f0/64748b?text=Image+Error'; // Fallback for broken image links
+                    };
+                    imageLink.appendChild(img); // Append image to link
+                    card.appendChild(imageLink); // Append image link to card
+
+                    const infoDiv = document.createElement('div'); // Create div for station info
+                    infoDiv.className = 'station-info'; // Add class to info div
+
+                    const displayName = station.DisplayName && station.DisplayName.length > 0
+                                        ? station.DisplayName.join(', ') // Join display names if available
+                                        : (station.name || 'N/A'); // Use name or N/A
+                    infoDiv.innerHTML += `<p class="font-semibold text-lg">${displayName}</p>`; // Add display name
+                    infoDiv.innerHTML += `<p><strong>Channel:</strong> ${station.channel || 'N/A'}</p>`; // Add channel
+                    infoDiv.innerHTML += `<p><strong>Call Sign:</strong> ${station.callSign || 'N/A'}</p>`; // Add call sign
+                    infoDiv.innerHTML += `<p><strong>Station ID:</strong> ${station.stationId || 'N/A'}</p>`; // Add station ID
+                    infoDiv.innerHTML += `<p><strong>Affiliate:</strong> ${station.affiliateCallSign || station.affiliateId || 'N/A'}</p>`; // Add affiliate info
+                    infoDiv.innerHTML += `<p><strong>Type:</strong> ${station.type || 'N/A'}</p>`; // Add type
+                    infoDiv.innerHTML += `<p><strong>Video Quality:</strong> ${station.videoQuality?.videoType || 'N/A'} (${station.videoQuality?.truResolution || 'N/A'})</p>`; // Add video quality
+
+                    if (station.preferredImage && station.preferredImage.uri) { // If preferred image URI exists
+                        const uriText = document.createElement('p'); // Create paragraph for URI text
+                        const uriLink = document.createElement('a'); // Create link for URI
+                        uriLink.href = station.preferredImage.uri; // Set link href
+                        uriLink.target = "_blank"; // Open link in new tab
+                        uriLink.textContent = station.preferredImage.uri; // Set link text
+                        uriText.appendChild(uriLink); // Append link to paragraph
+                        infoDiv.appendChild(uriText); // Append paragraph to info div
+                    }
+                    card.appendChild(infoDiv); // Append info div to card
+
+                    // Per-card M3U8 URL input field
+                    const m3uLinkInput = document.createElement('input'); // Create input field
+                    m3uLinkInput.type = 'text'; // Set input type to text
+                    m3uLinkInput.className = 'm3u-input-per-card'; // Add class to input
+                    m3uLinkInput.placeholder = `Enter M3U8 URL for ${displayName}`; // Set placeholder text
+                    m3uLinkInput.dataset.stationId = station.stationId; // Link input to station
+                    if (selectedStations[station.stationId] && selectedStations[station.stationId].streamUrl) { // Populate input if stream URL exists
+                        m3uLinkInput.value = selectedStations[station.stationId].streamUrl;
+                    }
+                    m3uLinkInput.classList.toggle('hidden', !checkbox.checked); // Hide input if checkbox not checked
+                    card.appendChild(m3uLinkInput); // Append input to card
+
+                    // Event listener for checkbox
+                    checkbox.addEventListener('change', (event) => { // Listen for checkbox change
+                        if (event.target.checked) { // If checkbox is checked
+                            if (!selectedStations[station.stationId]) { // If station not already selected
+                                selectedStations[station.stationId] = { ...station, streamUrl: '' }; // Add station to selected with empty streamUrl
+                            }
+                            m3uLinkInput.classList.remove('hidden'); // Show input
+                            m3uLinkInput.focus(); // Focus input
+                        } else {
+                            delete selectedStations[station.stationId]; // Remove station from selected
+                            m3uLinkInput.classList.add('hidden'); // Hide input
+                            m3uLinkInput.value = ''; // Clear input value
+                        }
+                        updateSelectedCount(); // Update selected count
+                        updateGenerateButtonState(); // Update generate button state
+                    });
+
+                    // Event listener for the per-card M3U8 input
+                    m3uLinkInput.addEventListener('input', (event) => { // Listen for input changes
+                        const id = event.target.dataset.stationId; // Get station ID from dataset
+                        if (selectedStations[id]) { // If station is selected
+                            selectedStations[id].streamUrl = event.target.value.trim(); // Update streamUrl
+                        }
+                        updateGenerateButtonState(); // Re-evaluate button state
+                    });
+
+                    stationResultsDiv.appendChild(card); // Append card to results div
+                });
+                updateSelectedCount(); // Update selected count after displaying all cards
+                updateGenerateButtonState(); // Update generate button state after displaying all cards
+            }
+
+            // Function to filter stations based on search input
+            function filterStations() {
+                const searchTerm = searchInput.value.toLowerCase().trim(); // Get and trim search term
+                let filtered = []; // Initialize filtered array
+
+                if (searchTerm === '') {
+                    displayStations([], searchTerm); // Show initial message if search is cleared
+                    clearSearchBtn.classList.add('hidden'); // Hide clear search button
+                    // If results section is currently visible, hide it and show initial message
+                    if (!stationResultsSection.classList.contains('hidden')) {
+                        stationResultsSection.classList.add('hidden');
+                        initialMessageDiv.classList.remove('hidden');
+                        toggleStationsBtn.textContent = 'View All Stations'; // Reset button text
+                    }
+                } else {
+                    filtered = Object.values(allStations).filter(station => { // Filter all stations
+                        const name = (station.name || '').toLowerCase(); // Get lowercase name
+                        const callSign = (station.callSign || '').toLowerCase(); // Get lowercase call sign
+                        const stationId = (station.stationId || '').toLowerCase(); // Get lowercase station ID
+                        const channel = (station.channel || '').toLowerCase(); // Get lowercase channel
+                        const displayName = (station.DisplayName ? station.DisplayName.join(', ').toLowerCase() : ''); // Get lowercase display name
+                        const affiliateId = (station.affiliateId || '').toLowerCase(); // Get lowercase affiliate ID
+                        const affiliateCallSign = (station.affiliateCallSign || '').toLowerCase(); // Get lowercase affiliate call sign
+                        const type = (station.type || '').toLowerCase(); // Get lowercase type
+                        const videoQualityType = (station.videoQuality?.videoType || '').toLowerCase(); // Get lowercase video quality type
+                        const truResolution = (station.videoQuality?.truResolution || '').toLowerCase(); // Get lowercase true resolution
+
+                        return name.includes(searchTerm) || // Check if name includes search term
+                               callSign.includes(searchTerm) || // Check if call sign includes search term
+                               stationId.includes(searchTerm) || // Check if station ID includes search term
+                               channel.includes(searchTerm) || // Check if channel includes search term
+                               displayName.includes(searchTerm) || // Check if display name includes search term
+                               affiliateId.includes(searchTerm) || // Check if affiliate ID includes search term
+                               affiliateCallSign.includes(searchTerm) || // Check if affiliate call sign includes search term
+                               type.includes(searchTerm) || // Check if type includes search term
+                               videoQualityType.includes(searchTerm) || // Check if video quality type includes search term
+                               truResolution.includes(searchTerm); // Check if true resolution includes search term
+                    });
+                    displayStations(filtered, searchTerm); // Display filtered stations
+                    clearSearchBtn.classList.remove('hidden'); // Show clear search button
+                    stationResultsSection.classList.remove('hidden'); // Ensure results section is visible
+                    toggleStationsBtn.textContent = 'Hide Stations'; // Change button text to Hide
+                }
+            }
+
+            // Function to update the count of selected channels
+            function updateSelectedCount() {
+                const count = Object.keys(selectedStations).length; // Get count of selected stations
+                selectedCountSpan.textContent = `${count} channel${count === 1 ? '' : 's'} selected`; // Update display text
+            }
+
+            // Function to update the state of the Generate button
+            function updateGenerateButtonState() {
+                const hasSelectedChannels = Object.keys(selectedStations).length > 0; // Check if any channels are selected
+                const allSelectedHaveUrls = Object.values(selectedStations).every(station => station.streamUrl && station.streamUrl.trim() !== ''); // Check if all selected have URLs
+                
+                generateM3UBtn.disabled = !(hasSelectedChannels && allSelectedHaveUrls); // Enable/disable generate button
+
+                if (generateM3UBtn.disabled) { // If generate button is disabled
+                    m3uOutput.classList.add('hidden'); // Hide M3U output
+                    downloadM3UBtn.disabled = true; // Disable download button
+                    copyM3UBtn.disabled = true; // Disable copy button
+                }
+            }
+
+            // Function to generate the EXTM3U playlist
+            function generateM3UPlaylist() {
+                hideMessage(); // Hide any current messages
+                if (Object.keys(selectedStations).length === 0) { // If no stations selected
+                    showMessage('Please select at least one channel to generate the playlist.', 'error'); // Show error message
+                    return;
+                }
+                const allSelectedHaveUrls = Object.values(selectedStations).every(station => station.streamUrl && station.streamUrl.trim() !== ''); // Re-check if all selected have URLs
+                if (!allSelectedHaveUrls) { // If not all selected have URLs
+                    showMessage('Please provide an M3U8 URL for all selected channels.', 'error'); // Show error message
+                    return;
+                }
+
+                let m3uContent = '#EXTM3U\n'; // Start M3U content
+
+                Object.values(selectedStations).forEach(station => { // Iterate over selected stations
+                    const tvgLogo = station.preferredImage && station.preferredImage.uri && !station.preferredImage.uri.startsWith('sources/generic/')
+                                    ? station.preferredImage.uri // Get preferred image URI
+                                    : ''; // Empty string if no valid logo
+                    const displayName = station.DisplayName && station.DisplayName.length > 0
+                                        ? station.DisplayName.join(', ') // Join display names
+                                        : (station.name || station.callSign || 'Unknown Channel'); // Fallback for display name
+                    const groupTitle = "Channels DVR"; // Set group title
+
+                    const streamUrl = station.streamUrl; // Get stream URL from selected station
+
+                    m3uContent += `#EXTINF:-1 channel-id="${station.stationId || ''}"`; // Add channel ID
+                    m3uContent += ` tvg-id="${station.stationId || ''}"`; // Add tvg-id
+                    if (station.channel) { // If channel exists
+                        m3uContent += ` tvg-chno="${station.channel}"`; // Add tvg-chno
+                    }
+                    if (tvgLogo) { // If tvgLogo exists
+                        m3uContent += ` tvg-logo="${tvgLogo}"`; // Add tvg-logo
+                    }
+                    m3uContent += ` tvc-guide-stationid="${station.stationId || ''}"`; // Add tvc-guide-stationid
+                    m3uContent += ` tvg-name="${displayName}"`; // Add tvg-name
+                    m3uContent += ` group-title="${groupTitle}",${displayName}\n`; // Add group-title and display name
+                    m3uContent += `${streamUrl}\n`; // Add stream URL
+                });
+
+                m3uOutput.value = m3uContent; // Set M3U output textarea value
+                m3uOutput.classList.remove('hidden'); // Show M3U output textarea
+                downloadM3UBtn.disabled = false; // Enable download button
+                copyM3UBtn.disabled = false; // Enable copy button
+                showMessage('M3U Playlist generated successfully!', 'info'); // Show success message
+            }
+
+            // Function to download the generated M3U file
+            function downloadM3U() {
+                hideMessage(); // Hide any current messages
+                const filename = 'channels_dvr_playlist.m3u'; // Set filename
+                const text = m3uOutput.value; // Get M3U content
+                if (!text) { // If no text to download
+                    showMessage('No playlist content to download.', 'error'); // Show error message
+                    return;
+                }
+
+                const blob = new Blob([text], { type: 'text/plain' }); // Create Blob from text
+                const a = document.createElement('a'); // Create anchor element
+                a.href = URL.createObjectURL(blob); // Set href to Blob URL
+                a.download = filename; // Set download filename
+                document.body.appendChild(a); // Append anchor to body
+                a.click(); // Programmatically click anchor
+                document.body.removeChild(a); // Remove anchor from body
+                URL.revokeObjectURL(a.href); // Revoke Blob URL
+                showMessage('M3U Playlist downloaded.', 'info'); // Show download success message
+            }
+
+            // Function to copy the generated M3U content to clipboard
+            function copyM3UToClipboard() {
+                hideMessage(); // Hide any current messages
+                m3uOutput.select(); // Select textarea content
+                try {
+                    const successful = document.execCommand('copy'); // Execute copy command
+                    if (successful) { // If copy successful
+                        showMessage('M3U Playlist copied to clipboard!', 'info'); // Show success message
+                    } else {
+                        showMessage('Failed to copy playlist to clipboard. Please copy manually.', 'error'); // Show failure message
+                    }
+                } catch (err) {
+                    console.error('Failed to copy:', err); // Log error
+                    showMessage('Failed to copy playlist to clipboard. Please copy manually.', 'error'); // Show failure message
+                }
+                window.getSelection().removeAllRanges(); // Deselect content
+            }
+
+            // Event listeners
+            searchInput.addEventListener('keyup', filterStations); // Listen for keyup on search input
+            generateM3UBtn.addEventListener('click', generateM3UPlaylist); // Listen for click on generate button
+            downloadM3UBtn.addEventListener('click', downloadM3U); // Listen for click on download button
+            copyM3UBtn.addEventListener('click', copyM3UToClipboard); // Listen for click on copy button
+
+            // Toggle Stations Button functionality (was viewAllBtn)
+            toggleStationsBtn.addEventListener('click', () => {
+                if (stationResultsSection.classList.contains('hidden')) {
+                    stationResultsSection.classList.remove('hidden'); // Show the results section
+                    toggleStationsBtn.textContent = 'Hide Stations'; // Change button text
+                    searchInput.value = ''; // Clear search input
+                    displayStations(Object.values(allStations), ''); // Display all stations
+                    initialMessageDiv.classList.add('hidden'); // Hide initial message
+                    clearSearchBtn.classList.add('hidden'); // Hide clear search button
+                } else {
+                    stationResultsSection.classList.add('hidden'); // Hide the results section
+                    toggleStationsBtn.textContent = 'View All Stations'; // Change button text back
+                    stationResultsDiv.innerHTML = ''; // Clear displayed stations
+                    noResultsDiv.classList.add('hidden'); // Hide no results message
+                    initialMessageDiv.classList.remove('hidden'); // Show initial message
+                    clearSearchBtn.classList.add('hidden'); // Hide clear search button
+                    searchInput.value = ''; // Ensure search input is cleared when hiding
+                }
+            });
+
+            // Event listener for "Clear Search" button
+            clearSearchBtn.addEventListener('click', () => { // Listen for click on clear search button
+                searchInput.value = ''; // Clear search input
+                filterStations(); // Trigger filter to update display
+            });
+
+            // Initial fetch of stations
+            fetchStations(); // Fetch stations when DOM content is loaded
+        });
+    </script>
+</body>
+</html>
