@@ -32,7 +32,7 @@ This is the fastest and easiest way to get the application running. It pulls the
     version: '3.8'
     services:
       nginx:
-        image: <your-dockerhub-username>/cdvr-station-search-nginx:latest
+        image: rcvaughn2/cdvr-station-search-nginx:latest
         ports:
           - "5003:80"
         depends_on:
@@ -40,7 +40,7 @@ This is the fastest and easiest way to get the application running. It pulls the
         restart: unless-stopped
 
       php-fpm:
-        image: <your-dockerhub-username>/cdvr-station-search-php:latest
+        image:  rcvaughn2/cdvr-station-search-php:latest
         environment:
           - CHANNELS_DVR_IP=${CHANNELS_DVR_IP}
         restart: unless-stopped
@@ -117,4 +117,5 @@ Follow these instructions if you have cloned the repository and want to build th
   * The application is split into two containers:
     1.  **`nginx`**: A lightweight web server that serves the `index.html` file and proxies PHP requests.
     2.  **`php-fpm`**: Processes the `proxy.php` script, which fetches station data from the Channels DVR server API. This proxy is necessary to avoid CORS (Cross-Origin Resource Sharing) browser errors.
+
   * The setup is configured for automatic builds and pushes to Docker Hub via GitHub Actions.
