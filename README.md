@@ -2,87 +2,119 @@
 
 This application allows you to search for stations from your Channels DVR server, select desired channels, and generate a custom M3U playlist. You can then download or copy this playlist for use with other media players or services.
 
+The application is served via a lightweight, multi-container Docker setup using Nginx and PHP-FPM for optimal performance and a small footprint.
+
 ## Features
 
-* **Search and Filter:** Easily find Channels DVR stations by name, call sign, channel number, station ID, and more.
-* **Select Channels:** Interactively select individual channels to include in your playlist.
-* **Custom M3U8 URLs:** For each selected channel, you can provide a specific M3U8 stream URL, allowing for flexible playlist creation.
-* **M3U Generation:** Generate a standard EXTM3U playlist based on your selections and provided URLs.
-* **Download & Copy:** Download the generated M3U file or copy its content directly to your clipboard.
-* **Dynamic UI:** The interface dynamically updates based on your search and selections.
+  * **Search and Filter:** Easily find Channels DVR stations by name, call sign, channel number, station ID, and more.
+  * **Select Channels:** Interactively select individual channels to include in your playlist.
+  * **Custom M3U8 URLs:** For each selected channel, you can provide a specific M3U8 stream URL.
+  * **M3U Generation:** Generate a standard EXTM3U playlist based on your selections.
+  * **Download & Copy:** Download the generated M3U file or copy its content directly to your clipboard.
+  * **Multi-Arch Support:** Docker images are available for `linux/amd64` and `linux/arm64`, supporting a wide range of devices from standard PCs to Raspberry Pis.
 
 ## Prerequisites
 
-To use this application, you need:
+To run this application, you will need:
 
-1. **A running Channels DVR Server:** The application connects to your local Channels DVR instance to fetch station information.
-2. **Docker:** To build and run the provided Docker image.
+  * A running Channels DVR Server.
+  * [Docker](https://www.docker.com/get-started) and [Docker Compose](https://docs.docker.com/compose/install/).
 
-## Setup and Installation
+-----
 
-1. **Download and extract the zip file:** You should be left with a folder containing a `Dockerfile` and a `src` directory containing `index.html` and `proxy.php` files.
+## Quick Start (Using Pre-Built Docker Hub Images)
 
-2. **Build the Docker Image:** Open your terminal or command prompt, navigate to the directory containing your `Dockerfile` and `src` folder, and run the following command:
+This is the fastest and easiest way to get the application running. It pulls the pre-built images directly from Docker Hub.
 
-3. ```bash
-   docker build -t channels-m3u8 .
-   ```
-   
-   This command builds a Docker image named `channels-m3u8`.
+1.  **Create a `docker-compose.yml` file** with the following content. Replace `<your-dockerhub-username>` with your actual Docker Hub username.
 
-4. **Run the Docker Container:** Once the image is built, you can run the container using the following command. **Remember to replace `192.168.86.64` with the actual IP address of your Channels DVR server.**
-   
-   ```bash
-   docker run -d --restart unless-stopped -p 5003:80 -e CHANNELS_DVR_IP=192.168.86.64 --name channels-m3u8 channels-m3u8
-   ```
-   
-   * `-d`: Runs the container in detached mode (in the background).
-   * `--restart unless-stopped`: The container will automatically restart unless it is explicitly stopped.
-   * `-p 5003:80`: Maps port `5003` on your host machine to port `80` inside the container. You can pick any open and available port you want to. 
-   * `-e CHANNELS_DVR_IP=192.168.86.64`: Sets the `CHANNELS_DVR_IP` environment variable inside the container to the IP address of your Channels DVR server. The `proxy.php` uses this environment variable to connect to your Channels DVR.
-   * `--name channels-m3u8`: Assigns the name `channels-m3u8` to your container for easy management.
-   * `channels-m3u8`: The name of the Docker image to run.
+    ```yaml
+    version: '3.8'
+    services:
+      nginx:
+        image: <your-dockerhub-username>/cdvr-station-search-nginx:latest
+        ports:
+          - "5003:80"
+        depends_on:
+          - php-fpm
+        restart: unless-stopped
+
+      php-fpm:
+        image: <your-dockerhub-username>/cdvr-station-search-php:latest
+        environment:
+          - CHANNELS_DVR_IP=${CHANNELS_DVR_IP}
+        restart: unless-stopped
+    ```
+
+2.  **Create an `.env` file** in the same directory as your `docker-compose.yml`. This file will store the IP address of your Channels DVR server.
+
+    ```
+    # Replace with the IP address of your Channels DVR server
+    CHANNELS_DVR_IP=192.168.86.64
+    ```
+
+3.  **Start the application** by running the following command in your terminal:
+
+    ```bash
+    docker-compose up -d
+    ```
+
+4.  **Access the Application:** Open your web browser and navigate to `http://localhost:5003`.
+
+-----
+
+## Local Development (Building from Source)
+
+Follow these instructions if you have cloned the repository and want to build the Docker images yourself.
+
+1.  **Clone the Repository:**
+
+    ```bash
+    git clone https://github.com/your-username/your-repo-name.git
+    cd your-repo-name
+    ```
+
+2.  **Create the Environment File:** Create a file named `.env` in the root of the project. Add the IP address of your Channels DVR server to this file:
+
+    ```
+    # Replace with the IP address of your Channels DVR server
+    CHANNELS_DVR_IP=192.168.86.64
+    ```
+
+3.  **Build and Run with Docker Compose:** Use the `docker-compose.yml` file included in the repository to build and start the services.
+
+    ```bash
+    # This command will build the images and start the containers in detached mode
+    docker-compose up -d --build
+    ```
+
+4.  **Access the Application:** Open your web browser and navigate to `http://localhost:5003` (or `http://your-docker-host-ip:5003` if Docker is running on a different machine).
 
 ## Usage
 
-1. **Access the Application:** Open your web browser and navigate to `http://localhost:5003` (or `http://your_docker_host_ip:5003` if Docker is running on a different machine).
-2. **Initial Load:** The application will attempt to fetch stations from your Channels DVR server. If successful, you will see an initial message prompting you to search or view all stations. If there's an error connecting, an error message will be displayed.
-3. **Search for Stations:**
-   * Type a keyword (e.g., "NBC", "2.1", "HBO", "ESPN") into the "Start typing to search for channels..." input field.
-   * The results will dynamically update as you type.
-   * Click "Clear Search" to remove the search term and hide results.
-4. **View All Stations:**
-   * Click the "View All Stations" button to display all available channels from your Channels DVR server. This button will change to "Hide Stations" allowing you to collapse the list.
-5. **Select Channels:**
-   * For each channel you want to include in your M3U playlist, check the checkbox in the top-left corner of its card.
-   * When you check a box, an "Enter M3U8 URL" input field will appear on that card.
-6. **Enter M3U8 URLs:**
-   * For each selected channel, **you must enter a valid M3U8 stream URL** into the input field that appears. This is the actual stream URL that your player will use.
-7. **Generate M3U Playlist:**
-   * Once you have selected channels and provided M3U8 URLs for all of them, the "Generate M3U Playlist" button will become enabled.
-   * Click this button to generate the M3U content in the textarea below.
-8. **Download or Copy M3U:**
-   * After the M3U playlist is generated, the "Download M3U" and "Copy to Clipboard" buttons will become enabled.
-   * Click "Download M3U" to save the playlist as a `.m3u` file (e.g., `channels_dvr_playlist.m3u`).
-   * Click "Copy to Clipboard" to copy the entire M3U content to your system clipboard.
+1.  **Initial Load:** The application will attempt to fetch stations from your Channels DVR server.
+2.  **Search for Stations:** Use the search bar to filter channels by name, call sign, etc.
+3.  **View All Stations:** Click "View All Stations" to see a complete list.
+4.  **Select Channels:** Check the box on any channel card to include it in your playlist.
+5.  **Enter M3U8 URLs:** For each selected channel, you **must enter a valid M3U8 stream URL** in the input field that appears.
+6.  **Generate M3U Playlist:** Once all selected channels have a URL, click the "Generate M3U Playlist" button.
+7.  **Download or Copy:** Use the "Download M3U" or "Copy to Clipboard" buttons to save your generated playlist.
 
 ## Troubleshooting
 
-* **"Error loading stations: Could not connect to Channels DVR server..."**:
-  * Ensure your Channels DVR server is running.
-  * Verify the IP address (`192.168.86.64` in the example `docker run` command) is correct and reachable from where your Docker container is running.
-  * Ensure the port `8089` is correct for your Channels DVR server.
-  * Check your Docker container logs for more specific error messages: `docker logs channels-m3u8`.
-* **No stations appear after searching/viewing all:**
-  * This could also indicate a connection issue to the Channels DVR server. Check the browser's developer console for network errors (F12, then "Console" or "Network" tab).
-  * Ensure your Channels DVR server actually has stations configured and available.
-* **"Please provide an M3U8 URL for all selected channels."**:
-  * You must enter a stream URL for every channel you've selected before generating the M3U.
-* **M3U playlist doesn't play in my media player**:
-  * Double-check that the M3U8 URLs you entered are correct and valid.
-  * Ensure your media player supports the HLS (M3U8) streaming format.
+  * **"Error loading stations: Could not connect to Channels DVR server..."**:
+      * Ensure your Channels DVR server is running.
+      * Double-check that the `CHANNELS_DVR_IP` in your `.env` file is correct and reachable from the machine running Docker.
+      * Check the container logs for more specific errors: `docker-compose logs php-fpm`.
+  * **Application is not accessible at `localhost:5003`**:
+      * Verify the containers are running with `docker-compose ps`.
+      * Check the Nginx container logs for startup errors: `docker-compose logs nginx`.
+  * **"Please provide an M3U8 URL for all selected channels."**:
+      * You must enter a stream URL for every channel you have selected before you can generate the playlist.
 
 ## Development Notes
 
-* The `proxy.php` acts as a simple proxy to bypass potential CORS (Cross-Origin Resource Sharing) issues when the `index.html` (served from your Docker container on port `5003`) tries to fetch data directly from the Channels DVR server (which runs on a different IP and port `8089`).
-* The application uses [Tailwind CSS](https://tailwindcss.com/) for styling (via CDN) and plain JavaScript for functionality.
+  * The application is split into two containers:
+    1.  **`nginx`**: A lightweight web server that serves the `index.html` file and proxies PHP requests.
+    2.  **`php-fpm`**: Processes the `proxy.php` script, which fetches station data from the Channels DVR server API. This proxy is necessary to avoid CORS (Cross-Origin Resource Sharing) browser errors.
+  * The setup is configured for automatic builds and pushes to Docker Hub via GitHub Actions.
