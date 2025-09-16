@@ -26,7 +26,7 @@ To run this application, you will need:
 
 This is the fastest and easiest way to get the application running. It pulls the pre-built images directly from Docker Hub.
 
-1.  **Create a `docker-compose.yml` file** with the following content. Replace `<your-dockerhub-username>` with your actual Docker Hub username.
+1.  **Create a `docker-compose.yml` file** with the following content.
 
     ```yaml
     version: '3.8'
@@ -119,3 +119,4 @@ Follow these instructions if you have cloned the repository and want to build th
     2.  **`php-fpm`**: Processes the `proxy.php` script, which fetches station data from the Channels DVR server API. This proxy is necessary to avoid CORS (Cross-Origin Resource Sharing) browser errors.
 
   * The setup is configured for automatic builds and pushes to Docker Hub via GitHub Actions.
+
