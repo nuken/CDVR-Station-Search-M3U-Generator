@@ -50,7 +50,7 @@ This is the fastest and easiest way to get the application running. It pulls the
 
     ```
     # Replace with the IP address of your Channels DVR server
-    CHANNELS_DVR_IP=192.168.86.64
+    e.g. CHANNELS_DVR_IP=192.168.86.64
     ```
 
 3.  **Start the application** by running the following command in your terminal:
@@ -70,15 +70,15 @@ Follow these instructions if you have cloned the repository and want to build th
 1.  **Clone the Repository:**
 
     ```bash
-    git clone https://github.com/your-username/your-repo-name.git
-    cd your-repo-name
+    git clone https://github.com/nuken/CDVR-Station-Search-M3U-Generator.git
+    cd CDVR-Station-Search-M3U-Generator
     ```
 
 2.  **Create the Environment File:** Create a file named `.env` in the root of the project. Add the IP address of your Channels DVR server to this file:
 
     ```
     # Replace with the IP address of your Channels DVR server
-    CHANNELS_DVR_IP=192.168.86.64
+    e.g. CHANNELS_DVR_IP=192.168.86.64
     ```
 
 3.  **Build and Run with Docker Compose:** Use the `docker-compose.yml` file included in the repository to build and start the services.
@@ -119,4 +119,5 @@ Follow these instructions if you have cloned the repository and want to build th
     2.  **`php-fpm`**: Processes the `proxy.php` script, which fetches station data from the Channels DVR server API. This proxy is necessary to avoid CORS (Cross-Origin Resource Sharing) browser errors.
 
   * The setup is configured for automatic builds and pushes to Docker Hub via GitHub Actions.
+
 
